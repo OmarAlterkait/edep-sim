@@ -228,6 +228,8 @@ int EDepSim::PersistencyManager::Code(StringTable& table, const std::string& val
 void EDepSim::PersistencyManager::OpenStepTruth() {
     std::string name = GetFilename();
     size_t dot = name.rfind('.');
+    size_t slash = name.rfind('/');
+    if (dot == std::string::npos || (slash != std::string::npos && dot < slash)) dot = name.size();
     std::string base = name.substr(0, dot), ext = name.substr(dot);
     fStepFile.Open(base + "_step" + ext, "step");
     fTruthFile.Open(base + "_mctruth" + ext, "mctruth");
