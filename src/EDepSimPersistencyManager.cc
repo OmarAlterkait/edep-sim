@@ -49,6 +49,7 @@ EDepSim::PersistencyManager::PersistencyManager()
       fGammaThreshold(5*MeV), fNeutronThreshold(50*MeV),
       fTrajectoryPointAccuracy(1.*mm), fTrajectoryPointDeposit(0*MeV),
       fSaveAllPrimaryTrajectories(true),
+      fStepTruth(false), fGroupSize(5), fGroupGap(3.*mm),
       fROOTOutput(false), fHDF5Output(false),
       fMergeHitSegments(false){
     fPersistencyMessenger = new EDepSim::PersistencyMessenger(this);
@@ -233,6 +234,8 @@ bool EDepSim::PersistencyManager::UpdateSummaries(const G4Event* event) {
         EDepSimDebug("      Segment Detectors "
                 << fEventSummary.SegmentDetectors.size());
 
+    }else if (fStepTruth) {
+        return WriteStepTruth(event);
     }else{
         EDepSimDebug("   Constructing the outputs for HDF5");
 
@@ -334,7 +337,21 @@ void EDepSim::PersistencyManager::SummarizePrimariesH5(
             vtx.probability = srcInfo->GetProbability();
             const G4PrimaryVertex* infoVertex
                 = srcInfo->GetInformationalVertex();
-            if (infoVertex) {
+            if (infoVertex && fStepTruth) {
+                H5DLP::VLArrayDataset<H5DLP::Primary> info_part;
+                H5DLP::VLArrayDataset<H5DLP::Vertex> info_vtx;
+                SummarizePrimariesH5(info_part, info_vtx, infoVertex);
+                // interaction_id is that of the vertex they belong to
+                for (size_t i=0; i<info_part.Size(); ++i) {
+                    fInfoPrimaries.push_back(info_part.At(i));
+                    fInfoPrimaries.back().interaction_id = interaction_id;
+                }
+                for (size_t i=0; i<info_vtx.Size(); ++i) {
+                    fInfoVertices.push_back(info_vtx.At(i));
+                    fInfoVertices.back().interaction_id = interaction_id;
+                }
+            }
+            else if (infoVertex) {
 
                 auto& info_dest_part = fH5Summary.GetVLArray<H5DLP::Primary>(vtx.generator.c_str(),"primary");
                 auto& info_dest = fH5Summary.GetVLArray<H5DLP::Vertex>(vtx.generator.c_str(),"vertex");
